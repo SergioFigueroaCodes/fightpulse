@@ -1,0 +1,25 @@
+# Gradle
+.gradle/
+build/
+
+# Keep the Gradle wrapper
+!gradle/wrapper/gradle-wrapper.jar
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Environment variables and private configuration
+.env
+.env.*
+!.env.example
+application-local.properties
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
