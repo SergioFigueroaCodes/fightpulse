@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>FightPulse Dashboard</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #121212;
+            color: white;
+            margin: 0;
+        }
+
+        header {
+            background-color: #b71c1c;
+            padding: 25px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        button {
+            background-color: #d32f2f;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #f44336;
+        }
+
+        button:disabled {
+            background-color: #777;
+            cursor: not-allowed;
+        }
+
+        table {
+            width: 100%;
+            margin-top: 25px;
+            border-collapse: collapse;
+            background-color: #1e1e1e;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: 1px solid #444;
+            text-align: left;
+        }
+
+        th {
+            background-color: #333;
+        }
+
+        #message {
+            margin-top: 20px;
+            color: #ffcc80;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h1>FightPulse</h1>
+    <p>MMA YouTube Engagement Analytics</p>
+</header>
+
+<main>
+    <h2>MMA Video Data</h2>
+
+    <p>
+        This dashboard displays saved MMA YouTube videos
+        and their latest engagement information.
+    </p>
+
+    <!-- This button calls the loadVideos function. -->
+    <button id="load-button" onclick="loadVideos()">
+        Load Videos
+    </button>
+
+    <!-- JavaScript will display loading and error messages here. -->
+    <p id="message">
+        Press “Load Videos” to display video data.
+    </p>
+
+    <table>
+        <thead>
+        <tr>
+            <th>Video Title</th>
+            <th>Channel</th>
+            <th>Category</th>
+            <th>Views</th>
+            <th>Likes</th>
+            <th>Comments</th>
+            <th>Engagement</th>
+        </tr>
+        </thead>
+
+        <!-- JavaScript will place the video rows inside this section. -->
+        <tbody id="video-table-body">
+        </tbody>
+    </table>
+</main>
+
+<script>
+    // This function runs when the user presses Load Videos.
+    async function loadVideos() {
+        const button = document.getElementById("load-button");
+        const message = document.getElementById("message");
+        const tableBody = document.getElementById("video-table-body");
+
+        // Prevent the button from being pressed repeatedly while loading.
+        button.disabled = true;
+
+        // Tell the user that the request is running.
+        message.textContent = "Loading saved videos...";
+
+        // Remove any old table rows.
+        tableBody.innerHTML = "";
+
+        try {
+            // Request all saved videos from the Spring Boot API.
+            const videoResponse = await fetch("/api/youtube/saved");
+
+            // Stop if the API returns an error status.
+            if (!videoResponse.ok) {
+                throw new Error("The saved-videos request failed.");
+            }
+
+            // Convert the JSON response into a JavaScript array.
+            const videos = await videoResponse.json();
+
+            // Handle an empty database.
+            if (videos.length === 0) {
+                message.textContent =
+                    "No saved videos were found. Collect videos first.";
+
+                return;
+            }
+
+            // Process each saved video one at a time.
+            for (const video of videos) {
+                // Request all snapshots belonging to this video.
+                const snapshotResponse = await fetch(
+                    "/api/youtube/saved/"
+                    + encodeURIComponent(video.youtubeVideoId)
+                    + "/snapshots"
+                );
+
+                if (!snapshotResponse.ok) {
+                    throw new Error(
+                        "Could not load statistics for " + video.title
+                    );
+                }
+
+                // Convert the snapshot response into an array.
+                const snapshots = await snapshotResponse.json();
+
+                // Find the most recently collected snapshot.
+                const latestSnapshot = getLatestSnapshot(snapshots);
+
+                // Create a new HTML table row.
+                const row = document.createElement("tr");
+
+                // Add the video and snapshot information to the row.
+                row.innerHTML = `
+                    <td>${escapeHtml(video.title)}</td>
+                    <td>${escapeHtml(video.channelTitle)}</td>
+                    <td>${escapeHtml(video.category)}</td>
+                    <td>${formatNumber(latestSnapshot?.viewCount)}</td>
+                    <td>${formatNumber(latestSnapshot?.likeCount)}</td>
+                    <td>${formatNumber(latestSnapshot?.commentCount)}</td>
+                    <td>${formatEngagement(latestSnapshot)}</td>
+                `;
+
+                // Place the completed row inside the table.
+                tableBody.appendChild(row);
+            }
+
+            message.textContent =
+                videos.length + " saved video(s) loaded successfully.";
+
+        } catch (error) {
+            // Show a helpful message if an API request fails.
+            message.textContent = "Error: " + error.message;
+
+        } finally {
+            // Re-enable the button after loading finishes.
+            button.disabled = false;
+        }
+    }
+
+    // Returns the snapshot with the newest collectedAt date.
+    function getLatestSnapshot(snapshots) {
+        if (!snapshots || snapshots.length === 0) {
+            return null;
+        }
+
+        return snapshots.reduce((latest, current) => {
+            const latestDate = new Date(latest.collectedAt);
+            const currentDate = new Date(current.collectedAt);
+
+            return currentDate > latestDate ? current : latest;
+        });
+    }
+
+    // Adds commas to large numbers, such as 1000000 → 1,000,000.
+    function formatNumber(number) {
+        if (number === undefined || number === null) {
+            return "No data";
+        }
+
+        return Number(number).toLocaleString();
+    }
+
+    // Formats an engagement rate as a percentage.
+    function formatEngagement(snapshot) {
+        if (!snapshot) {
+            return "No data";
+        }
+
+        return Number(snapshot.engagementRate).toFixed(2) + "%";
+    }
+
+    // Prevents video titles from being interpreted as HTML code.
+    function escapeHtml(value) {
+        if (value === undefined || value === null) {
+            return "";
+        }
+
+        const element = document.createElement("div");
+        element.textContent = String(value);
+
+        return element.innerHTML;
+    }
+</script>
+
+</body>
+</html>
