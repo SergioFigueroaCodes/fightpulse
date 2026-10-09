@@ -1,26 +1,21 @@
+
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
-
-    <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0"
-    >
-
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FightPulse Dashboard</title>
 
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #121212;
+            background: #121212;
             color: white;
             margin: 0;
         }
 
         header {
-            background-color: #b71c1c;
+            background: #b71c1c;
             padding: 25px;
             text-align: center;
         }
@@ -31,46 +26,93 @@
             padding: 20px;
         }
 
+        input {
+            padding: 12px;
+            width: 280px;
+            max-width: 90%;
+            font-size: 16px;
+            border-radius: 5px;
+            border: 1px solid #555;
+        }
+
         button {
-            background-color: #d32f2f;
+            background: #d32f2f;
             color: white;
             border: none;
             padding: 12px 20px;
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
+            margin: 5px;
         }
 
         button:hover {
-            background-color: #f44336;
+            background: #f44336;
         }
 
         button:disabled {
-            background-color: #777;
-            cursor: not-allowed;
+            background: #777;
+        }
+
+        #message {
+            color: #ffcc80;
+            margin-top: 20px;
+        }
+
+        .table-container {
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
             margin-top: 25px;
             border-collapse: collapse;
-            background-color: #1e1e1e;
+            background: #1e1e1e;
         }
 
-        th,
-        td {
+        th, td {
             padding: 12px;
             border: 1px solid #444;
             text-align: left;
         }
 
         th {
-            background-color: #333;
+            background: #333;
         }
 
-        #message {
-            margin-top: 20px;
-            color: #ffcc80;
+        /* New engagement chart */
+        .chart-section {
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 35px;
+        }
+
+        .chart-row {
+            margin: 18px 0;
+        }
+
+        .chart-label {
+            margin-bottom: 7px;
+            overflow-wrap: anywhere;
+        }
+
+        .chart-track {
+            background: #333;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .chart-bar {
+            background: #d32f2f;
+            padding: 9px 0;
+            min-width: 0;
+            border-radius: 5px;
+        }
+
+        .chart-value {
+            font-weight: bold;
+            margin-top: 5px;
         }
     </style>
 </head>
@@ -86,170 +128,274 @@
     <h2>MMA Video Data</h2>
 
     <p>
-        This dashboard displays saved MMA YouTube videos
-        and their latest engagement information.
+        Search for an MMA topic to collect YouTube video data,
+        or load videos that have already been saved.
     </p>
 
-    <!-- This button calls the loadVideos function. -->
-    <button id="load-button" onclick="loadVideos()">
-        Load Videos
+    <input id="search-input" value="MMA"
+           placeholder="Search MMA topic...">
+
+    <button id="search-button" onclick="collectVideos()">
+        Search & Collect
     </button>
 
-    <!-- JavaScript will display loading and error messages here. -->
+    <div>
+        <button id="load-button" onclick="loadVideos()">
+            Load Saved Videos
+        </button>
+    </div>
+
     <p id="message">
-        Press “Load Videos” to display video data.
+        Enter an MMA topic or load saved videos.
     </p>
 
-    <table>
-        <thead>
-        <tr>
-            <th>Video Title</th>
-            <th>Channel</th>
-            <th>Category</th>
-            <th>Views</th>
-            <th>Likes</th>
-            <th>Comments</th>
-            <th>Engagement</th>
-        </tr>
-        </thead>
+    <!-- Existing video table -->
+    <div class="table-container">
+        <table>
+            <thead>
+            <tr>
+                <th>Video Title</th>
+                <th>Channel</th>
+                <th>Category</th>
+                <th>Views</th>
+                <th>Likes</th>
+                <th>Comments</th>
+                <th>Engagement</th>
+            </tr>
+            </thead>
+            <tbody id="video-table-body"></tbody>
+        </table>
+    </div>
 
-        <!-- JavaScript will place the video rows inside this section. -->
-        <tbody id="video-table-body">
-        </tbody>
-    </table>
+    <!-- New chart section -->
+    <section class="chart-section">
+        <h2>Engagement Rate Comparison</h2>
+        <p>Compare the latest engagement rates of saved MMA videos.</p>
+        <div id="engagement-chart">
+            Load saved videos to see the chart.
+        </div>
+    </section>
 </main>
 
 <script>
-    // This function runs when the user presses Load Videos.
-    async function loadVideos() {
-        const button = document.getElementById("load-button");
-        const message = document.getElementById("message");
-        const tableBody = document.getElementById("video-table-body");
-
-        // Prevent the button from being pressed repeatedly while loading.
-        button.disabled = true;
-
-        // Tell the user that the request is running.
-        message.textContent = "Loading saved videos...";
-
-        // Remove any old table rows.
-        tableBody.innerHTML = "";
-
-        try {
-            // Request all saved videos from the Spring Boot API.
-            const videoResponse = await fetch("/api/youtube/saved");
-
-            // Stop if the API returns an error status.
-            if (!videoResponse.ok) {
-                throw new Error("The saved-videos request failed.");
-            }
-
-            // Convert the JSON response into a JavaScript array.
-            const videos = await videoResponse.json();
-
-            // Handle an empty database.
-            if (videos.length === 0) {
-                message.textContent =
-                    "No saved videos were found. Collect videos first.";
-
-                return;
-            }
-
-            // Process each saved video one at a time.
-            for (const video of videos) {
-                // Request all snapshots belonging to this video.
-                const snapshotResponse = await fetch(
-                    "/api/youtube/saved/"
-                    + encodeURIComponent(video.youtubeVideoId)
-                    + "/snapshots"
-                );
-
-                if (!snapshotResponse.ok) {
-                    throw new Error(
-                        "Could not load statistics for " + video.title
-                    );
-                }
-
-                // Convert the snapshot response into an array.
-                const snapshots = await snapshotResponse.json();
-
-                // Find the most recently collected snapshot.
-                const latestSnapshot = getLatestSnapshot(snapshots);
-
-                // Create a new HTML table row.
-                const row = document.createElement("tr");
-
-                // Add the video and snapshot information to the row.
-                row.innerHTML = `
-                    <td>${escapeHtml(video.title)}</td>
-                    <td>${escapeHtml(video.channelTitle)}</td>
-                    <td>${escapeHtml(video.category)}</td>
-                    <td>${formatNumber(latestSnapshot?.viewCount)}</td>
-                    <td>${formatNumber(latestSnapshot?.likeCount)}</td>
-                    <td>${formatNumber(latestSnapshot?.commentCount)}</td>
-                    <td>${formatEngagement(latestSnapshot)}</td>
-                `;
-
-                // Place the completed row inside the table.
-                tableBody.appendChild(row);
-            }
-
-            message.textContent =
-                videos.length + " saved video(s) loaded successfully.";
-
-        } catch (error) {
-            // Show a helpful message if an API request fails.
-            message.textContent = "Error: " + error.message;
-
-        } finally {
-            // Re-enable the button after loading finishes.
-            button.disabled = false;
-        }
+    // Prevent video titles from becoming HTML code.
+    function escapeHtml(value) {
+        const element = document.createElement("div");
+        element.textContent = String(value ?? "");
+        return element.innerHTML;
     }
 
-    // Returns the snapshot with the newest collectedAt date.
+    // Format large numbers with commas.
+    function formatNumber(value) {
+        if (value === null || value === undefined) {
+            return "No data";
+        }
+        return Number(value).toLocaleString();
+    }
+
+    // Get the newest snapshot for a video.
     function getLatestSnapshot(snapshots) {
         if (!snapshots || snapshots.length === 0) {
             return null;
         }
 
-        return snapshots.reduce((latest, current) => {
-            const latestDate = new Date(latest.collectedAt);
-            const currentDate = new Date(current.collectedAt);
-
-            return currentDate > latestDate ? current : latest;
-        });
+        return snapshots.reduce((latest, current) =>
+            new Date(current.collectedAt) >
+            new Date(latest.collectedAt)
+                ? current
+                : latest
+        );
     }
 
-    // Adds commas to large numbers, such as 1000000 → 1,000,000.
-    function formatNumber(number) {
-        if (number === undefined || number === null) {
-            return "No data";
-        }
+    // Calculate the display value from saved engagement data.
+    function engagementRate(snapshot) {
+        if (!snapshot) return null;
 
-        return Number(number).toLocaleString();
+        const rate = Number(snapshot.engagementRate);
+        return Number.isFinite(rate) ? rate : null;
     }
 
-    // Formats an engagement rate as a percentage.
     function formatEngagement(snapshot) {
-        if (!snapshot) {
-            return "No data";
-        }
-
-        return Number(snapshot.engagementRate).toFixed(2) + "%";
+        const rate = engagementRate(snapshot);
+        return rate === null ? "No data" : rate.toFixed(2) + "%";
     }
 
-    // Prevents video titles from being interpreted as HTML code.
-    function escapeHtml(value) {
-        if (value === undefined || value === null) {
-            return "";
+    // Search YouTube and save videos using Spring Boot.
+    async function collectVideos() {
+        const input = document.getElementById("search-input");
+        const button = document.getElementById("search-button");
+        const message = document.getElementById("message");
+        const query = input.value.trim();
+
+        if (!query) {
+            message.textContent = "Please enter an MMA topic.";
+            return;
         }
 
-        const element = document.createElement("div");
-        element.textContent = String(value);
+        button.disabled = true;
+        message.textContent = "Collecting YouTube videos...";
 
-        return element.innerHTML;
+        try {
+            const response = await fetch(
+                "/api/youtube/collect?query=" +
+                encodeURIComponent(query),
+                { method: "POST" }
+            );
+
+            if (!response.ok) {
+                throw new Error(
+                    "Collection failed (HTTP " + response.status + ")"
+                );
+            }
+
+            const result = await response.json();
+
+            await loadVideos();
+
+            message.textContent =
+                "Collected " + result.savedCount +
+                " video(s) for " + result.query + ".";
+        } catch (error) {
+            message.textContent = "Error: " + error.message;
+        } finally {
+            button.disabled = false;
+        }
     }
+
+    // Load saved videos and their latest statistics.
+    async function loadVideos() {
+        const button = document.getElementById("load-button");
+        const message = document.getElementById("message");
+        const table = document.getElementById("video-table-body");
+        const chart = document.getElementById("engagement-chart");
+
+        button.disabled = true;
+        message.textContent = "Loading saved videos...";
+        table.replaceChildren();
+        chart.textContent = "Loading chart...";
+
+        try {
+            const response = await fetch("/api/youtube/saved");
+
+            if (!response.ok) {
+                throw new Error(
+                    "Load failed (HTTP " + response.status + ")"
+                );
+            }
+
+            const videos = await response.json();
+            const chartData = [];
+
+            for (const video of videos) {
+                const snapshotResponse = await fetch(
+                    "/api/youtube/saved/" +
+                    encodeURIComponent(video.youtubeVideoId) +
+                    "/snapshots"
+                );
+
+                if (!snapshotResponse.ok) {
+                    throw new Error("Could not load video statistics.");
+                }
+
+                const snapshots = await snapshotResponse.json();
+                const latest = getLatestSnapshot(snapshots);
+
+                // Add one row to the existing table.
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${escapeHtml(video.title)}</td>
+                    <td>${escapeHtml(video.channelTitle)}</td>
+                    <td>${escapeHtml(video.category)}</td>
+                    <td>${formatNumber(latest?.viewCount)}</td>
+                    <td>${formatNumber(latest?.likeCount)}</td>
+                    <td>${formatNumber(latest?.commentCount)}</td>
+                    <td>${formatEngagement(latest)}</td>
+                `;
+
+                table.appendChild(row);
+
+                // Save the data needed for the chart.
+                const rate = engagementRate(latest);
+
+                if (rate !== null) {
+                    chartData.push({
+                        title: video.title,
+                        rate: rate
+                    });
+                }
+            }
+
+            // Draw the chart after all videos load.
+            drawChart(chartData);
+
+            message.textContent =
+                videos.length +
+                " saved video(s) loaded successfully.";
+
+        } catch (error) {
+            message.textContent = "Error: " + error.message;
+            chart.textContent = "Could not load chart data.";
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    // New function: Draw horizontal engagement bars.
+    function drawChart(data) {
+        const chart = document.getElementById("engagement-chart");
+        chart.replaceChildren();
+
+        if (data.length === 0) {
+            chart.textContent = "No engagement data available.";
+            return;
+        }
+
+        // Highest engagement first.
+        data.sort((a, b) => b.rate - a.rate);
+
+        const maxRate = Math.max(
+            ...data.map(item => Math.max(0, item.rate)),
+            0.01
+        );
+
+        for (const item of data) {
+            const row = document.createElement("div");
+            row.className = "chart-row";
+
+            const label = document.createElement("div");
+            label.className = "chart-label";
+            label.textContent = item.title;
+
+            const track = document.createElement("div");
+            track.className = "chart-track";
+
+            const bar = document.createElement("div");
+            bar.className = "chart-bar";
+
+            // Scale each bar relative to the highest rate.
+            bar.style.width =
+                (Math.max(0, item.rate) / maxRate * 100) + "%";
+
+            const value = document.createElement("div");
+            value.className = "chart-value";
+            value.textContent = item.rate.toFixed(2) + "%";
+
+            track.appendChild(bar);
+            row.appendChild(label);
+            row.appendChild(track);
+            row.appendChild(value);
+            chart.appendChild(row);
+        }
+    }
+
+    // Press Enter to search.
+    document.getElementById("search-input")
+        .addEventListener("keydown", function(event) {
+            if (event.key === "Enter") {
+                collectVideos();
+            }
+        });
 </script>
 
 </body>

@@ -23,3 +23,7 @@ application-local.properties
 
 # Logs
 *.log
+# Local H2 database
+data/
+*.mv.db
+*.trace.db
