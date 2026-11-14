@@ -149,6 +149,17 @@
         Enter an MMA topic or load saved videos.
     </p>
 
+    <!-- Filter saved videos by category -->
+    <div class="category-filter">
+        <label for="category-filter">Filter by category:</label>
+        <select id="category-filter">
+            <option value="ALL">All Videos</option>
+            <option value="NEWS">News</option>
+            <option value="FIGHT_HIGHLIGHT">Fight Highlights</option>
+            <option value="NEEDS_REVIEW">Needs Review</option>
+        </select>
+    </div>
+
     <!-- Existing video table -->
     <div class="table-container">
         <table>
@@ -262,6 +273,8 @@
         }
     }
 
+    let savedChartData = [];
+
     // Load saved videos and their latest statistics.
     async function loadVideos() {
         const button = document.getElementById("load-button");
@@ -302,6 +315,7 @@
 
                 // Add one row to the existing table.
                 const row = document.createElement("tr");
+                row.dataset.category = video.category;
 
                 row.innerHTML = `
                     <td>${escapeHtml(video.title)}</td>
@@ -321,13 +335,15 @@
                 if (rate !== null) {
                     chartData.push({
                         title: video.title,
-                        rate: rate
+                        rate: rate,
+                        category: video.category
                     });
                 }
             }
 
-            // Draw the chart after all videos load.
-            drawChart(chartData);
+            // Store chart data and apply the selected filter.
+            savedChartData = chartData;
+            filterVideos();
 
             message.textContent =
                 videos.length +
@@ -340,6 +356,26 @@
             button.disabled = false;
         }
     }
+
+    // Show only videos matching the selected category.
+    function filterVideos() {
+        const category = document.getElementById("category-filter").value;
+        const rows = document.querySelectorAll("#video-table-body tr");
+
+        for (const row of rows) {
+            row.hidden = category !== "ALL" &&
+                         row.dataset.category !== category;
+        }
+
+        const filteredChartData = savedChartData.filter(item =>
+            category === "ALL" || item.category === category
+        );
+
+        drawChart(filteredChartData);
+    }
+
+    document.getElementById("category-filter")
+        .addEventListener("change", filterVideos);
 
     // New function: Draw horizontal engagement bars.
     function drawChart(data) {
