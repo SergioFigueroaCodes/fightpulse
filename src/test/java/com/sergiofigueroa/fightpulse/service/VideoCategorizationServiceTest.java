@@ -41,4 +41,24 @@ class VideoCategorizationServiceTest {
 
         assertEquals(VideoCategory.NEEDS_REVIEW, result);
     }
+
+    // Test that UFC news videos are categorized as NEWS.
+    @Test
+    void shouldCategorizeUfcNewsVideo() {
+        VideoCategory result = service.categorize(
+                "Dana White THREATENING EMAILS from his MOTHER! Strickland DEMANDING MORE MONEY! Ilia FIGHT RUMOR!"
+        );
+
+        assertEquals(VideoCategory.NEWS, result);
+    }
+
+    // Test that "ko" inside another word does not mean knockout.
+    @Test
+    void shouldNotMistakeWordContainingKoForKnockout() {
+        VideoCategory result = service.categorize(
+                "Korean MMA Fighter Documentary"
+        );
+
+        assertEquals(VideoCategory.NEEDS_REVIEW, result);
+    }
 }

@@ -24,12 +24,12 @@ public class VideoCategorizationService {
                 "highlight",
                 "highlights",
                 "knockout",
-                "ko",
                 "finish",
                 "submission",
                 "full fight",
                 "fight moments",
-                "top moments")) {
+                "top moments")
+                || title.matches(".*(?<![a-z0-9])ko(?![a-z0-9]).*")) {
 
             return VideoCategory.FIGHT_HIGHLIGHT;
         }
@@ -72,6 +72,7 @@ public class VideoCategorizationService {
                 "announced",
                 "announcement",
                 "breaking",
+                "fight rumor",
                 "reveals",
                 "returns",
                 "ready to return",
