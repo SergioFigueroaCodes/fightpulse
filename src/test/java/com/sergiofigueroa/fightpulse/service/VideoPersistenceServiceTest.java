@@ -82,6 +82,33 @@ class VideoPersistenceServiceTest {
         assertEquals(0, snapshotRepository.count());
     }
 
+    @Test
+    void reclassifiesSavedVideosWithoutDeletingSnapshots() {
+        CategorizedVideo video = new CategorizedVideo(
+                "news-video-123",
+                "Dana White discusses UFC FIGHT RUMOR",
+                "FightPulse Test Channel",
+                "2026-09-10T14:11:36Z",
+                "https://example.com/thumbnail.jpg",
+                VideoCategory.NEEDS_REVIEW,
+                1000,
+                100,
+                20,
+                12.0
+        );
+
+        persistenceService.saveVideos(List.of(video));
+
+        int updatedCount = persistenceService.reclassifySavedVideos();
+
+        assertEquals(1, updatedCount);
+        assertEquals(VideoCategory.NEWS,
+                videoRepository.findByYoutubeVideoId("news-video-123")
+                        .orElseThrow().getCategory());
+        assertEquals(1, videoRepository.count());
+        assertEquals(1, snapshotRepository.count());
+    }
+
     private CategorizedVideo createTestVideo() {
 
         return new CategorizedVideo(

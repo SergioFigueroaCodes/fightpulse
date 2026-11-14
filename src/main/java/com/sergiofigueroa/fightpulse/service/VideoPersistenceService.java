@@ -18,13 +18,16 @@ public class VideoPersistenceService {
 
     private final VideoRepository videoRepository;
     private final VideoSnapshotRepository snapshotRepository;
+    private final VideoCategorizationService categorizationService;
 
     public VideoPersistenceService(
             VideoRepository videoRepository,
-            VideoSnapshotRepository snapshotRepository) {
+            VideoSnapshotRepository snapshotRepository,
+            VideoCategorizationService categorizationService) {
 
         this.videoRepository = videoRepository;
         this.snapshotRepository = snapshotRepository;
+        this.categorizationService = categorizationService;
     }
 
     @Transactional
@@ -93,7 +96,24 @@ public class VideoPersistenceService {
         }
     }
 
-    @Transactional(readOnly = true)
+@Transactional
+    public int reclassifySavedVideos() {
+        int updatedCount = 0;
+
+        for (Video video : videoRepository.findAll()) {
+            var newCategory = categorizationService.categorize(video.getTitle());
+
+            if (video.getCategory() != newCategory) {
+                video.setCategory(newCategory);
+                videoRepository.save(video);
+                updatedCount++;
+            }
+        }
+
+        return updatedCount;
+    }
+
+        @Transactional(readOnly = true)
     public List<Video> getAllVideos() {
         return videoRepository.findAll();
     }

@@ -100,6 +100,12 @@ public class YouTubeController {
         );
     }
 
+    @PostMapping("/saved/reclassify")
+    public Map<String, Integer> reclassifySavedVideos() {
+        int updatedCount = persistenceService.reclassifySavedVideos();
+        return Map.of("updatedCount", updatedCount);
+    }
+
     @GetMapping("/saved")
     public List<Video> getSavedVideos() {
         return persistenceService.getAllVideos();
