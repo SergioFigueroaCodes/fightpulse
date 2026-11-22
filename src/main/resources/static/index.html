@@ -160,6 +160,17 @@
         </select>
     </div>
 
+
+    <!-- Sort saved videos by engagement rate -->
+    <div class="category-filter">
+        <label for="engagement-sort">Sort by engagement:</label>
+        <select id="engagement-sort">
+            <option value="HIGH">Highest Engagement</option>
+            <option value="LOW">Lowest Engagement</option>
+        </select>
+    </div>
+
+
     <!-- Existing video table -->
     <div class="table-container">
         <table>
@@ -177,6 +188,7 @@
             <tbody id="video-table-body"></tbody>
         </table>
     </div>
+
 
     <!-- New chart section -->
     <section class="chart-section">
@@ -316,6 +328,8 @@
                 // Add one row to the existing table.
                 const row = document.createElement("tr");
                 row.dataset.category = video.category;
+                row.dataset.engagementRate =
+                    engagementRate(latest) ?? "";
 
                 row.innerHTML = `
                     <td>${escapeHtml(video.title)}</td>
@@ -357,6 +371,36 @@
         }
     }
 
+
+    // Sort table rows by engagement rate.
+    function sortVideos() {
+        const table = document.getElementById("video-table-body");
+        const direction =
+            document.getElementById("engagement-sort").value;
+
+        const rows = Array.from(table.querySelectorAll("tr"));
+
+        rows.sort((a, b) => {
+            const aRate = a.dataset.engagementRate === ""
+                ? null : Number(a.dataset.engagementRate);
+            const bRate = b.dataset.engagementRate === ""
+                ? null : Number(b.dataset.engagementRate);
+
+            // Keep videos without engagement data at the bottom.
+            if (aRate === null) return bRate === null ? 0 : 1;
+            if (bRate === null) return -1;
+
+            return direction === "LOW"
+                ? aRate - bRate
+                : bRate - aRate;
+        });
+
+        rows.forEach(row => table.appendChild(row));
+    }
+
+    document.getElementById("engagement-sort")
+        .addEventListener("change", filterVideos);
+
     // Show only videos matching the selected category.
     function filterVideos() {
         const category = document.getElementById("category-filter").value;
@@ -371,6 +415,7 @@
             category === "ALL" || item.category === category
         );
 
+        sortVideos();
         drawChart(filteredChartData);
     }
 
@@ -388,7 +433,14 @@
         }
 
         // Highest engagement first.
-        data.sort((a, b) => b.rate - a.rate);
+        const direction =
+            document.getElementById("engagement-sort").value;
+
+        data.sort((a, b) =>
+            direction === "LOW"
+                ? a.rate - b.rate
+                : b.rate - a.rate
+        );
 
         const maxRate = Math.max(
             ...data.map(item => Math.max(0, item.rate)),
