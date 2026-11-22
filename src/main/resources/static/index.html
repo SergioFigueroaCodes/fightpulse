@@ -197,6 +197,19 @@
         <div id="engagement-chart">
             Load saved videos to see the chart.
         </div>
+
+    </section>
+
+    <section class="chart-section">
+        <h2>Views Comparison</h2>
+        <p>Compare the views of saved MMA videos.</p>
+        <div id="views-chart">Load saved videos to see the chart.</div>
+    </section>
+
+    <section class="chart-section">
+        <h2>Likes Comparison</h2>
+        <p>Compare the likes of saved MMA videos.</p>
+        <div id="likes-chart">Load saved videos to see the chart.</div>
     </section>
 </main>
 
@@ -350,6 +363,8 @@
                     chartData.push({
                         title: video.title,
                         rate: rate,
+                        views: Number(latest?.viewCount ?? 0),
+                        likes: Number(latest?.likeCount ?? 0),
                         category: video.category
                     });
                 }
@@ -417,6 +432,8 @@
 
         sortVideos();
         drawChart(filteredChartData);
+        drawMetricChart("views-chart", filteredChartData, "views");
+        drawMetricChart("likes-chart", filteredChartData, "likes");
     }
 
     document.getElementById("category-filter")
@@ -468,6 +485,53 @@
             const value = document.createElement("div");
             value.className = "chart-value";
             value.textContent = item.rate.toFixed(2) + "%";
+
+            track.appendChild(bar);
+            row.appendChild(label);
+            row.appendChild(track);
+            row.appendChild(value);
+            chart.appendChild(row);
+        }
+    }
+
+
+    // Draw a horizontal comparison chart for views or likes.
+    function drawMetricChart(elementId, data, metric) {
+        const chart = document.getElementById(elementId);
+        chart.replaceChildren();
+
+        if (data.length === 0) {
+            chart.textContent = "No video data available.";
+            return;
+        }
+
+        const sorted = [...data].sort(
+            (a, b) => b[metric] - a[metric]
+        );
+
+        const maxValue = Math.max(
+            ...sorted.map(item => item[metric]), 1
+        );
+
+        for (const item of sorted) {
+            const row = document.createElement("div");
+            row.className = "chart-row";
+
+            const label = document.createElement("div");
+            label.className = "chart-label";
+            label.textContent = item.title;
+
+            const track = document.createElement("div");
+            track.className = "chart-track";
+
+            const bar = document.createElement("div");
+            bar.className = "chart-bar";
+            bar.style.width =
+                (Math.max(0, item[metric]) / maxValue * 100) + "%";
+
+            const value = document.createElement("div");
+            value.className = "chart-value";
+            value.textContent = formatNumber(item[metric]);
 
             track.appendChild(bar);
             row.appendChild(label);
