@@ -80,6 +80,32 @@
             background: #333;
         }
 
+        /* Dashboard summary statistics */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin: 25px 0;
+        }
+
+        .summary-card {
+            background: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .summary-card h3 {
+            color: #ff7070;
+            margin: 0 0 12px;
+        }
+
+        .summary-card .summary-value {
+            font-size: 26px;
+            font-weight: bold;
+            overflow-wrap: anywhere;
+        }
+
         /* New engagement chart */
         .chart-section {
             background: #1e1e1e;
@@ -170,6 +196,24 @@
         </select>
     </div>
 
+
+    <!-- Dashboard summary statistics -->
+    <section class="summary-grid" aria-label="Video statistics">
+        <div class="summary-card">
+            <h3>Total Videos</h3>
+            <div class="summary-value" id="total-videos">—</div>
+        </div>
+
+        <div class="summary-card">
+            <h3>Average Engagement</h3>
+            <div class="summary-value" id="average-engagement">—</div>
+        </div>
+
+        <div class="summary-card">
+            <h3>Top Video by Views</h3>
+            <div class="summary-value" id="top-video">—</div>
+        </div>
+    </section>
 
     <!-- Existing video table -->
     <div class="table-container">
@@ -307,6 +351,9 @@
         const table = document.getElementById("video-table-body");
         const chart = document.getElementById("engagement-chart");
 
+        document.getElementById("total-videos").textContent = "—";
+        document.getElementById("average-engagement").textContent = "—";
+        document.getElementById("top-video").textContent = "—";
         button.disabled = true;
         message.textContent = "Loading saved videos...";
         table.replaceChildren();
@@ -323,6 +370,11 @@
 
             const videos = await response.json();
             const chartData = [];
+            let engagementTotal = 0;
+            let engagementCount = 0;
+            let topVideo = null;
+            let highestViews = -1;
+
 
             for (const video of videos) {
                 const snapshotResponse = await fetch(
@@ -337,6 +389,20 @@
 
                 const snapshots = await snapshotResponse.json();
                 const latest = getLatestSnapshot(snapshots);
+
+                const currentRate = engagementRate(latest);
+                if (currentRate !== null) {
+                    engagementTotal += currentRate;
+                    engagementCount++;
+                }
+
+                const views = latest?.viewCount;
+                if (views != null && Number.isFinite(Number(views)) &&
+                    Number(views) > highestViews) {
+                    highestViews = Number(views);
+                    topVideo = video.title;
+                }
+
 
                 // Add one row to the existing table.
                 const row = document.createElement("tr");
@@ -369,6 +435,17 @@
                     });
                 }
             }
+
+            document.getElementById("total-videos").textContent =
+                formatNumber(videos.length);
+
+            document.getElementById("average-engagement").textContent =
+                engagementCount > 0
+                    ? (engagementTotal / engagementCount).toFixed(2) + "%"
+                    : "No data";
+
+            document.getElementById("top-video").textContent =
+                topVideo ?? "No data";
 
             // Store chart data and apply the selected filter.
             savedChartData = chartData;
